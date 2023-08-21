@@ -100,7 +100,7 @@ void show_help(char *prog)
 	fprintf(stderr, "-h - show help\n-i accept float values (internal float_to_bits)\n\n-a turn on pseudo-afc (works only with -i)\n-f pseudo-afc averaging filter constant (default 0.0001)\n");
 	fprintf(stderr, "-s try to display unknown SDS types as text\n-r try to reassemble fragmented PDUs\n");
 	fprintf(stderr, "-e allow parsing of encrypted packets (note: this will return gibberish, because they are ENCRYPTED, it won't break any encryption etc)\n");
-
+	fprintf(stderr, "-P read packed bitstream\n");
 }
 
 int main(int argc, char **argv)
@@ -112,6 +112,7 @@ int main(int argc, char **argv)
 	int opt;
 	int accept_float=0;
 	int do_afc=0;
+	int pack_bits=0;
 	float filter=0;
 	float filter_val=0.0001;
 	float filter_goal=0;
@@ -123,7 +124,7 @@ int main(int argc, char **argv)
 	tetra_hack_allow_encrypted=0;
 
 
-	while ((opt = getopt(argc, argv, "ihf:F:arse")) != -1) {
+	while ((opt = getopt(argc, argv, "ihf:F:Parse")) != -1) {
 
 		switch (opt) {
 			case 'i':
@@ -146,6 +147,9 @@ int main(int argc, char **argv)
 				break;
 			case 'e':
 				tetra_hack_allow_encrypted=1;
+				break;
+			case 'P':
+				pack_bits=1;
 				break;
 			case 'h':
 				show_help(argv[0]);
@@ -252,6 +256,29 @@ int main(int argc, char **argv)
 			}		
 			len=rc2*2;
 
+		}
+		else if(pack_bits)
+		{
+			uint8_t temp_buf[BUFLEN/8];
+			int temp_len=0;
+			len=0;
+			temp_len = read(fd, temp_buf, sizeof(temp_buf));
+			if (temp_len < 0) {
+				perror("read");
+				exit(1);
+			} else if (temp_len == 0) {
+				printf("EOF");
+				break;
+			}
+			while(temp_len)
+			{
+				for(int i = 0;i<=7;i++)
+				{
+					buf[len] = ( temp_buf[ sizeof(temp_buf)-temp_len ] >> i ) & 0x01;
+					len++;
+				}
+				temp_len--;
+			}
 		}
 		else
 		{
